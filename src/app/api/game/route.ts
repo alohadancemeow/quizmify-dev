@@ -1,23 +1,30 @@
 import { prisma } from "@/lib/db";
-import { getAuthSession } from "@/lib/nextauth";
+// import { getAuthSession } from "@/lib/nextauth";
 import { quizCreationSchema } from "@/schemas/forms/quiz";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import axios from "axios";
+import { auth } from "../../../../auth";
 
 export async function POST(req: Request, res: Response) {
+  const session = await auth();
+
+  console.log("session", session?.user);
+
+  if (!session?.user) {
+    return NextResponse.json(
+      { error: "You must be logged in to create a game." },
+      {
+        status: 401,
+      }
+    );
+  }
+
   try {
-    const session = await getAuthSession();
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "You must be logged in to create a game." },
-        {
-          status: 401,
-        }
-      );
-    }
     const body = await req.json();
     const { topic, type, amount } = quizCreationSchema.parse(body);
+
+    // create a game
     const game = await prisma.game.create({
       data: {
         gameType: type,
@@ -26,6 +33,8 @@ export async function POST(req: Request, res: Response) {
         topic,
       },
     });
+
+    // increment the topic count
     await prisma.topic_count.upsert({
       where: {
         topic,
@@ -41,60 +50,75 @@ export async function POST(req: Request, res: Response) {
       },
     });
 
+    console.log("before axios call");
+
+    // get questions
     const { data } = await axios.post(
-      `${process.env.API_URL as string}/api/questions`,
+      `${
+        (process.env.API_URL as string) || "http://localhost:3000"
+      }/api/questions`,
       {
         amount,
         topic,
         type,
+        userId: session.user.id,
       }
+      // {
+      //   headers: {
+      //     Cookie: req.headers.get("cookie") || "", // Forward cookies
+      //   },
+      // }
     );
 
-    if (type === "mcq") {
-      type mcqQuestion = {
-        question: string;
-        answer: string;
-        option1: string;
-        option2: string;
-        option3: string;
-      };
+    console.log("after axios call");
+    console.log("data", data);
 
-      const manyData = data.questions.map((question: mcqQuestion) => {
-        // mix up the options lol
-        const options = [
-          question.option1,
-          question.option2,
-          question.option3,
-          question.answer,
-        ].sort(() => Math.random() - 0.5);
-        return {
-          question: question.question,
-          answer: question.answer,
-          options: JSON.stringify(options),
-          gameId: game.id,
-          questionType: "mcq",
-        };
-      });
+    // create questions
+    // if (type === "mcq") {
+    //   type mcqQuestion = {
+    //     question: string;
+    //     answer: string;
+    //     option1: string;
+    //     option2: string;
+    //     option3: string;
+    //   };
 
-      await prisma.question.createMany({
-        data: manyData,
-      });
-    } else if (type === "open_ended") {
-      type openQuestion = {
-        question: string;
-        answer: string;
-      };
-      await prisma.question.createMany({
-        data: data.questions.map((question: openQuestion) => {
-          return {
-            question: question.question,
-            answer: question.answer,
-            gameId: game.id,
-            questionType: "open_ended",
-          };
-        }),
-      });
-    }
+    //   const manyData = data.questions.map((question: mcqQuestion) => {
+    //     // mix up the options lol
+    //     const options = [
+    //       question.option1,
+    //       question.option2,
+    //       question.option3,
+    //       question.answer,
+    //     ].sort(() => Math.random() - 0.5);
+    //     return {
+    //       question: question.question,
+    //       answer: question.answer,
+    //       options: JSON.stringify(options),
+    //       gameId: game.id,
+    //       questionType: "mcq",
+    //     };
+    //   });
+
+    //   await prisma.question.createMany({
+    //     data: manyData,
+    //   });
+    // } else if (type === "open_ended") {
+    //   type openQuestion = {
+    //     question: string;
+    //     answer: string;
+    //   };
+    //   await prisma.question.createMany({
+    //     data: data.questions.map((question: openQuestion) => {
+    //       return {
+    //         question: question.question,
+    //         answer: question.answer,
+    //         gameId: game.id,
+    //         questionType: "open_ended",
+    //       };
+    //     }),
+    //   });
+    // }
 
     return NextResponse.json({ gameId: game.id }, { status: 200 });
   } catch (error) {
@@ -106,8 +130,10 @@ export async function POST(req: Request, res: Response) {
         }
       );
     } else {
+      console.log("create game error", error);
+
       return NextResponse.json(
-        { error: "An unexpected error occurred." },
+        { error: "An unexpected error occurred. while creating game" },
         {
           status: 500,
         }
@@ -115,9 +141,10 @@ export async function POST(req: Request, res: Response) {
     }
   }
 }
+
 export async function GET(req: Request, res: Response) {
   try {
-    const session = await getAuthSession();
+    const session = await auth();
     if (!session?.user) {
       return NextResponse.json(
         { error: "You must be logged in to create a game." },

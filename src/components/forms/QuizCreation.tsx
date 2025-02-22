@@ -1,4 +1,5 @@
 "use client";
+
 import { quizCreationSchema } from "@/schemas/forms/quiz";
 import React from "react";
 import { z } from "zod";
@@ -41,6 +42,7 @@ const QuizCreation = ({ topic: topicParam }: Props) => {
   const [showLoader, setShowLoader] = React.useState(false);
   const [finishedLoading, setFinishedLoading] = React.useState(false);
   const { toast } = useToast();
+  
   const { mutate: getQuestions, isLoading } = useMutation({
     mutationFn: async ({ amount, topic, type }: Input) => {
       const response = await axios.post("/api/game", { amount, topic, type });

@@ -1,16 +1,16 @@
 import HistoryComponent from "@/components/HistoryComponent";
-import { getAuthSession } from "@/lib/nextauth";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import React from "react";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { LucideLayoutDashboard } from "lucide-react";
+import { auth } from "../../../auth";
 
 type Props = {};
 
 const History = async (props: Props) => {
-  const session = await getAuthSession();
+  const session = await auth();
   if (!session?.user) {
     return redirect("/");
   }

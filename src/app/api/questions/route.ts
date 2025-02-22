@@ -1,26 +1,46 @@
 import { strict_output } from "@/lib/gpt";
-import { getAuthSession } from "@/lib/nextauth";
 import { getQuestionsSchema } from "@/schemas/questions";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { auth } from "../../../../auth";
 
-export const runtime = "nodejs";
+// export const runtime = "nodejs";
 export const maxDuration = 500;
 
-export async function POST(req: Request, res: Response) {
+export async function POST(req: Request) {
+  // const session = await auth();
+
+  // console.log("session", session?.user);
+
+  // if (!session?.user) {
+  //   return NextResponse.json(
+  //     { error: "You must be logged in to create questions." },
+  //     {
+  //       status: 401,
+  //     }
+  //   );
+  // }
+
+  const body = await req.json();
+  console.log("Received request body:", body);
+
+  if (!body?.userId) {
+    return NextResponse.json(
+      { error: "You must be logged in to create questions." },
+      {
+        status: 401,
+      }
+    );
+  }
+
   try {
-    const session = await getAuthSession();
-    // if (!session?.user) {
-    //   return NextResponse.json(
-    //     { error: "You must be logged in to create a game." },
-    //     {
-    //       status: 401,
-    //     }
-    //   );
-    // }
-    const body = await req.json();
     const { amount, topic, type } = getQuestionsSchema.parse(body);
+
+    console.log("Received body:", body);
+
     let questions: any;
+
+    // create prompt based on type
     if (type === "open_ended") {
       questions = await strict_output(
         "You are a helpful AI that is able to generate a pair of question and answers, the length of each answer should not be more than 15 words, store all the pairs of answers and questions in a JSON array",
@@ -33,6 +53,8 @@ export async function POST(req: Request, res: Response) {
         }
       );
     } else if (type === "mcq") {
+      console.log("Before strict_output call");
+
       questions = await strict_output(
         "You are a helpful AI that is able to generate mcq questions and answers, the length of each answer should not be more than 15 words, store all answers and questions and options in a JSON array",
         new Array(amount).fill(
@@ -46,7 +68,10 @@ export async function POST(req: Request, res: Response) {
           option3: "option3 with max length of 15 words",
         }
       );
+
+      console.log("After strict_output call", questions);
     }
+
     return NextResponse.json(
       {
         questions: questions,
@@ -64,9 +89,9 @@ export async function POST(req: Request, res: Response) {
         }
       );
     } else {
-      console.error("elle gpt error", error);
+      console.error("create question error", error);
       return NextResponse.json(
-        { error: "An unexpected error occurred." },
+        { error: "An unexpected error occurred. while creating questions" },
         {
           status: 500,
         }

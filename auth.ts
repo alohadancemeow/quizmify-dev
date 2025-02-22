@@ -1,12 +1,15 @@
+import NextAuth from "next-auth";
+
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { type GetServerSidePropsContext } from "next";
-import {
-  getServerSession,
-  type NextAuthOptions,
-  type DefaultSession,
-} from "next-auth";
+import getServerSession, { type DefaultSession } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "@/lib/db";
+
+declare module "next-auth" {
+  interface JWT {
+    id: string;
+  }
+}
 
 declare module "next-auth" {
   interface Session extends DefaultSession {
@@ -23,17 +26,18 @@ declare module "next-auth" {
   // }
 }
 
-declare module "next-auth/jwt" {
-  interface JWT {
-    id: string;
-  }
-}
-
-export const authOptions: NextAuthOptions = {
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+    }),
+  ],
   session: {
     strategy: "jwt",
   },
   secret: process.env.NEXTAUTH_SECRET,
+
   callbacks: {
     jwt: async ({ token }) => {
       const db_user = await prisma.user.findFirst({
@@ -48,23 +52,17 @@ export const authOptions: NextAuthOptions = {
     },
     session: ({ session, token }) => {
       if (token) {
-        session.user.id = token.id;
+        session.user.id = token.id as string;
         session.user.name = token.name;
-        session.user.email = token.email;
+        session.user.email = token.email ?? "";
         session.user.image = token.picture;
       }
       return session;
     },
   },
   adapter: PrismaAdapter(prisma),
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-    }),
-  ],
-};
+});
 
-export const getAuthSession = () => {
-  return getServerSession(authOptions);
-};
+// export const getAuthSession = () => {
+//   return getServerSession(authOptions);
+// };

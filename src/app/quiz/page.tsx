@@ -1,8 +1,9 @@
 import React from "react";
 
-import { getAuthSession } from "@/lib/nextauth";
+// import { getAuthSession } from "@/lib/nextauth";
 import { redirect } from "next/navigation";
 import QuizCreation from "@/components/forms/QuizCreation";
+import { auth } from "../../../auth";
 
 export const metadata = {
   title: "Quiz | Quizzzy",
@@ -16,7 +17,8 @@ interface Props {
 }
 
 const Quiz = async ({ searchParams }: Props) => {
-  const session = await getAuthSession();
+  const session = await auth();
+
   if (!session?.user) {
     redirect("/");
   }

@@ -1,6 +1,5 @@
 import { buttonVariants } from "@/components/ui/button";
 import { prisma } from "@/lib/db";
-import { getAuthSession } from "@/lib/nextauth";
 import { LucideLayoutDashboard } from "lucide-react";
 import Link from "next/link";
 
@@ -10,6 +9,7 @@ import ResultsCard from "@/components/statistics/ResultsCard";
 import AccuracyCard from "@/components/statistics/AccuracyCard";
 import TimeTakenCard from "@/components/statistics/TimeTakenCard";
 import QuestionsList from "@/components/statistics/QuestionsList";
+import { auth } from "../../../../auth";
 
 type Props = {
   params: {
@@ -18,7 +18,7 @@ type Props = {
 };
 
 const Statistics = async ({ params: { gameId } }: Props) => {
-  const session = await getAuthSession();
+  const session = await auth();
   if (!session?.user) {
     return redirect("/");
   }

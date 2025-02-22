@@ -3,9 +3,10 @@ import HistoryCard from "@/components/dashboard/HistoryCard";
 import HotTopicsCard from "@/components/dashboard/HotTopicsCard";
 import QuizMeCard from "@/components/dashboard/QuizMeCard";
 import RecentActivityCard from "@/components/dashboard/RecentActivityCard";
-import { getAuthSession } from "@/lib/nextauth";
+// import { getAuthSession } from "@/lib/nextauth";
 import { redirect } from "next/navigation";
 import React from "react";
+import { auth } from "../../../auth";
 
 type Props = {};
 
@@ -15,7 +16,7 @@ export const metadata = {
 };
 
 const Dasboard = async (props: Props) => {
-  const session = await getAuthSession();
+  const session = await auth();
   if (!session?.user) {
     redirect("/");
   }
