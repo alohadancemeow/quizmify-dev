@@ -42,10 +42,16 @@ const QuizCreation = ({ topic: topicParam }: Props) => {
   const [showLoader, setShowLoader] = React.useState(false);
   const [finishedLoading, setFinishedLoading] = React.useState(false);
   const { toast } = useToast();
-  
+
   const { mutate: getQuestions, isLoading } = useMutation({
     mutationFn: async ({ amount, topic, type }: Input) => {
       const response = await axios.post("/api/game", { amount, topic, type });
+      if (!response.data) {
+        throw new Error("No data received from API");
+      }
+
+      console.log(response, "data");
+
       return response.data;
     },
   });

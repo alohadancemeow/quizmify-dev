@@ -1,10 +1,10 @@
-import Configuration, { OpenAI } from "openai";
+import { OpenAI } from "openai";
 
 // const configuration = new Configuration({
 //   apiKey: process.env.OPENAI_API_KEY,
 // });
 
-console.log("API Key:", process.env.OPENAI_API_KEY);
+// console.log("API Key:", process.env.OPENAI_API_KEY);
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -40,9 +40,11 @@ export async function strict_output(
   let error_msg: string = "";
 
   for (let i = 0; i < num_tries; i++) {
-    let output_format_prompt: string = `\nYou are to output the following in json format: ${JSON.stringify(
-      output_format
-    )}. \nDo not put quotation marks or escape character \\ in the output fields.`;
+    let output_format_prompt: string = `\nYou must return a valid JSON object formatted exactly like this:\n\`\`\`json\n${JSON.stringify(
+      output_format,
+      null,
+      2
+    )}\n\`\`\``;
 
     if (list_output) {
       output_format_prompt += `\nIf output field is a list, classify output into the best element of the list.`;
@@ -75,8 +77,8 @@ export async function strict_output(
       console.error("OpenAI response error:", response);
     }
 
-    let res: string =
-      response.choices[0].message?.content?.replace(/'/g, '"') ?? "";
+    let res: string = response.choices[0].message?.content ?? "";
+    res = res.replace(/^```json\s*|```$/g, "").trim(); // Remove Markdown code blocks if present
 
     // ensure that we don't replace away apostrophes in text
     res = res.replace(/(\w)"(\w)/g, "$1'$2");
