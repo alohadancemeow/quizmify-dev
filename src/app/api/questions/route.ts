@@ -2,6 +2,7 @@ import { getQuestionsSchema } from "@/schemas/questions";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { generateQuestions } from "@/lib/gemini";
+import { generateQuestions2 } from "@/lib/hugging-face";
 
 export async function POST(req: Request) {
   const body = await req.json();
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
 
   try {
     const { amount, topic, type } = getQuestionsSchema.parse(body);
-    const questions = await generateQuestions({ amount, topic, type });
+    const questions = await generateQuestions2({ amount, topic, type });
 
     console.log("Generated Questions:", questions);
 
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
         }
       );
     } else {
-      console.error("Error in question generation:", error);
+      console.log("Error in question generation:", error.message);
       return NextResponse.json(
         { error: "An unexpected error occurred. while creating questions" },
         {
