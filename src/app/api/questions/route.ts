@@ -1,8 +1,9 @@
 import { getQuestionsSchema } from "@/schemas/questions";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { generateQuestions } from "@/lib/gemini";
-import { generateQuestions2 } from "@/lib/hugging-face";
+
+import { generateText } from "ai";
+import { google } from "@ai-sdk/google";
 
 export async function POST(req: Request) {
   const body = await req.json();
@@ -18,9 +19,37 @@ export async function POST(req: Request) {
 
   try {
     const { amount, topic, type } = getQuestionsSchema.parse(body);
-    const questions = await generateQuestions2({ amount, topic, type });
 
-    console.log("Generated Questions:", questions);
+    // Structured prompt to enforce JSON output
+    const prompt = `
+      Generate ${amount} multiple-choice questions about ${topic}.
+      Return the response in a JSON array format where each object follows this structure:
+        {
+          "question": "question text",
+          "answer": "correct answer (max 15 words)",
+          "option1": "wrong option 1 (max 15 words)",
+          "option2": "wrong option 2 (max 15 words)",
+          "option3": "wrong option 3 (max 15 words)"
+        }
+      Ensure all fields are within the word limits.
+`;
+
+    const { text } = await generateText({
+      model: google("models/gemini-2.0-flash-exp"),
+      prompt: prompt,
+    });
+
+    // Remove Markdown code block formatting (if present)
+    const finalText = text.replace(/```json|```/g, "").trim();
+    console.log("Final Text:", finalText);
+
+    // Parse Gemini response to JSON
+    let questions;
+    try {
+      questions = JSON.parse(finalText);
+    } catch (error) {
+      console.error("Error parsing Gemini response:", error);
+    }
 
     return NextResponse.json({ questions }, { status: 200 });
   } catch (error: any) {
@@ -42,37 +71,3 @@ export async function POST(req: Request) {
     }
   }
 }
-
-// try {
-//   const { amount, topic, type } = getQuestionsSchema.parse(body);
-
-//   let questions: any;
-
-//   // create prompt based on type
-//   if (type === "open_ended") {
-//     questions = await strict_output(
-//       "You are a helpful AI that is able to generate a pair of question and answers, the length of each answer should not be more than 15 words, store all the pairs of answers and questions in a JSON array",
-//       new Array(amount).fill(
-//         `You are to generate a random hard open-ended questions about ${topic}`
-//       ),
-//       {
-//         question: "question",
-//         answer: "answer with max length of 15 words",
-//       }
-//     );
-//   } else if (type === "mcq") {
-//     console.log("Before strict_output call");
-
-//     questions = await strict_output(
-//       "You are a helpful AI that is able to generate mcq questions and answers, the length of each answer should not be more than 15 words, store all answers and questions and options in a JSON array",
-//       new Array(amount).fill(
-//         `You are to generate a random hard mcq question about ${topic}`
-//       ),
-//       {
-//         question: "question",
-//         answer: "answer with max length of 15 words",
-//         option1: "option1 with max length of 15 words",
-//         option2: "option2 with max length of 15 words",
-//         option3: "option3 with max length of 15 words",
-//       }
-//     );
